@@ -1,146 +1,190 @@
-# Roomaro Deployment Guide (Render + Vercel)
+# Roomaro Deployment Ready Guide
 
-This guide deploys:
+This repository is set up for:
 
-- Backend Socket.IO server on Render
-- Frontend Next.js app on Vercel
+- Backend: Render
+- Frontend: Vercel
 
-Use this exact order to avoid CORS and connection issues.
+The backend is a Socket.IO server and must run on a host that supports a long-lived Node process. The frontend is a Next.js app that deploys cleanly to Vercel.
 
-## 1. Prerequisites
+## Repository layout
 
-- GitHub repo pushed with both folders:
-  - `server/`
-  - `client/`
-- Render account
-- Vercel account
+- `server/` = realtime backend
+- `client/` = Next.js frontend
+- `render.yaml` = Render blueprint for the backend
 
-## 2. Deploy Backend on Render
+## 1. Backend deployment on Render
 
-### Create Web Service
+### Option A: Use the Render blueprint
 
-1. Open Render dashboard.
-2. Click **New +** -> **Web Service**.
-3. Connect your GitHub repo.
-4. Configure service:
-   - Name: `roomaro-server` (or any name)
-   - Root Directory: `server`
-   - Runtime: `Node`
-   - Build Command: `npm install; npm run build`
-   - Start Command: `npm run start`
+1. Push this repo to GitHub.
+2. In Render, create a new Blueprint deployment.
+3. Select the repository root.
+4. Render will read [render.yaml](render.yaml).
+5. Deploy the service.
 
-### Add Environment Variables (Render)
+### Option B: Manual Render setup
 
-Set these in Render -> Environment:
+If you prefer manual configuration, create a Web Service with:
 
-- `PORT` = `10000`
-- `CLIENT_ORIGIN` = your Vercel frontend URL, for example:
-  - `https://your-app.vercel.app`
+- Root Directory: `server`
+- Runtime: `Node`
+- Build Command: `npm ci && npm run build`
+- Start Command: `npm run start`
+- Health Check Path: `/health`
 
-If you use a custom domain on Vercel, use that domain instead.
+### Backend environment variables
 
-You can allow multiple origins by comma-separating:
+Set these in Render:
 
-`https://your-app.vercel.app,https://www.yourdomain.com`
+- `CLIENT_ORIGIN` = your Vercel frontend URL
+  - Example: `https://your-app.vercel.app`
+  - If you also use a custom domain, separate origins with commas
+  - Example: `https://your-app.vercel.app,https://www.yourdomain.com`
 
-### Deploy and Verify Backend
+Notes:
 
-After deploy succeeds, copy your Render URL, for example:
+- Do not hardcode localhost in production.
+- Render provides `PORT` automatically.
+- The server reads `CLIENT_ORIGIN` for both Express CORS and Socket.IO CORS.
 
-`https://roomaro-server.onrender.com`
+### Backend verification
 
-Check health endpoint in browser:
+After deploy, open:
 
-`https://roomaro-server.onrender.com/health`
+- `https://your-render-service.onrender.com/health`
 
-Expected response: JSON with `ok: true`.
+Expected response:
 
-## 3. Deploy Frontend on Vercel
+```json
+{ "ok": true }
+```
 
-### Create Project
+## 2. Frontend deployment on Vercel
 
-1. Open Vercel dashboard.
-2. Click **Add New** -> **Project**.
-3. Import the same GitHub repo.
-4. Set **Root Directory** to `client`.
-5. Framework should auto-detect as Next.js.
+### Create the Vercel project
 
-### Add Environment Variables (Vercel)
+1. Open Vercel.
+2. Import the same GitHub repository.
+3. Set Root Directory to `client`.
+4. Framework should auto-detect as Next.js.
 
-In Vercel Project Settings -> Environment Variables:
+### Frontend environment variables
+
+Set this in Vercel:
 
 - `NEXT_PUBLIC_SERVER_URL` = your Render backend URL
-  - Example: `https://roomaro-server.onrender.com`
+  - Example: `https://your-render-service.onrender.com`
 
-Then deploy.
+Important:
 
-## 4. Final Wiring Check
+- This value must point to the deployed Render backend, not localhost.
+- Redeploy the frontend after changing the env var.
 
-After both are live:
+### Frontend verification
 
-1. Open frontend URL on Vercel.
+After deploy:
+
+1. Open the Vercel URL.
 2. Create a room.
-3. Open same room in another tab/device.
-4. Confirm messages sync in real-time.
+3. Open the same room in another tab.
+4. Confirm messages sync in real time.
 
-## 5. Common Errors and Fixes
+## 3. Local development setup
 
-### Error: Socket not connecting in production
+### Backend local env file
 
-Cause:
-- `NEXT_PUBLIC_SERVER_URL` missing in Vercel
-
-Fix:
-- Add `NEXT_PUBLIC_SERVER_URL` and redeploy frontend.
-
-### Error: CORS blocked / websocket handshake failed
-
-Cause:
-- `CLIENT_ORIGIN` not matching frontend URL exactly
-
-Fix:
-- Set `CLIENT_ORIGIN` in Render to exact Vercel URL and redeploy backend.
-
-### Error: Backend works locally but fails on Render
-
-Cause:
-- No production start script or wrong root directory
-
-Fix:
-- Ensure Render uses:
-  - Root Directory: `server`
-  - Build: `npm install; npm run build`
-  - Start: `npm run start`
-
-### Error: App still points to localhost in production
-
-Cause:
-- Old env var value cached
-
-Fix:
-- Confirm Vercel env vars, then redeploy frontend.
-
-## 6. Local Development Reference
-
-### Backend (`server/.env`)
+Create `server/.env`:
 
 ```env
 PORT=3004
 CLIENT_ORIGIN=http://localhost:3000
 ```
 
-### Frontend (`client/.env.local`)
+### Frontend local env file
+
+Create `client/.env.local`:
 
 ```env
 NEXT_PUBLIC_SERVER_URL=http://localhost:3004
 ```
 
-## 7. Deployment Summary
+### Local run commands
 
-- Backend host: Render (`server`)
-- Frontend host: Vercel (`client`)
-- Required env mapping:
-  - Render `CLIENT_ORIGIN` -> Vercel app URL
-  - Vercel `NEXT_PUBLIC_SERVER_URL` -> Render app URL
+Backend:
 
-If both env variables are set correctly, deployment is seamless.
+```bash
+cd server
+npm install
+npm run dev
+```
+
+Frontend:
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+## 4. Commands used by deployment platforms
+
+### Render backend
+
+- Build Command: `npm ci && npm run build`
+- Start Command: `npm run start`
+
+### Vercel frontend
+
+- Build Command: handled automatically by Next.js
+- Start Command: handled automatically by Vercel
+
+## 5. Common deployment errors and fixes
+
+### TS2688: Cannot find type definition file for 'node'
+
+Cause:
+- Render installed packages without the Node type package available during build.
+
+Fix:
+- This repo now keeps `@types/node` available to the backend build.
+- Re-run Render deploy after pulling the latest `main` branch.
+
+### Socket connection fails in production
+
+Cause:
+- `NEXT_PUBLIC_SERVER_URL` is missing or points to localhost.
+
+Fix:
+- Set the Vercel env var to the Render URL and redeploy.
+
+### CORS or websocket handshake error
+
+Cause:
+- `CLIENT_ORIGIN` does not match the Vercel URL.
+
+Fix:
+- Set `CLIENT_ORIGIN` in Render to the exact Vercel URL and redeploy backend.
+
+### Backend deploys but frontend cannot connect
+
+Cause:
+- Backend and frontend env vars are not wired together.
+
+Fix:
+- Render `CLIENT_ORIGIN` must match Vercel URL.
+- Vercel `NEXT_PUBLIC_SERVER_URL` must match Render URL.
+
+## 6. Deployment checklist
+
+- Backend pushed to GitHub
+- Render blueprint available in the repo
+- Render service root is `server`
+- Render build command is `npm ci && npm run build`
+- Render start command is `npm run start`
+- Render `CLIENT_ORIGIN` is set to the Vercel URL
+- Vercel project root is `client`
+- Vercel `NEXT_PUBLIC_SERVER_URL` is set to the Render URL
+- Frontend redeployed after env changes
+
+If all items above are set, Roomaro is deployment ready.

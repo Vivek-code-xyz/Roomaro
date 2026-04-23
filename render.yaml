@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: roomaro-server
+    env: node
+    rootDir: server
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: CLIENT_ORIGIN
+        sync: false
