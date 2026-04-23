@@ -7,16 +7,23 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
+const HARDCODED_FRONTEND_ORIGIN = 'https://roomaro.vercel.app';
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '';
-const ALLOWED_ORIGINS = CLIENT_ORIGIN
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+
+const normalizeOrigin = (origin: string) => origin.trim().replace(/\/+$/, '');
+
+const ALLOWED_ORIGINS = Array.from(
+  new Set(
+    [HARDCODED_FRONTEND_ORIGIN, ...CLIENT_ORIGIN.split(',')]
+      .map((origin) => normalizeOrigin(origin))
+      .filter(Boolean)
+  )
+);
 
 const isAllowedOrigin = (origin?: string) => {
   if (!origin) return true;
   if (ALLOWED_ORIGINS.length === 0) return true;
-  return ALLOWED_ORIGINS.includes(origin);
+  return ALLOWED_ORIGINS.includes(normalizeOrigin(origin));
 };
 
 app.use(
