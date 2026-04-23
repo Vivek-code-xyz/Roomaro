@@ -25,7 +25,7 @@ interface UserState {
 export const useUserStore = create<UserState>()(
   persist(
     (set, get) => ({
-      username: 'Analyst',
+      username: generateRandomUsername(),
       avatar: 'User',
       theme: 'dark',
       font: 'inter',
@@ -74,6 +74,17 @@ export const useUserStore = create<UserState>()(
     {
       name: 'roomora-user-storage',
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as Partial<UserState> | undefined;
+        if (!state) return persistedState;
+
+        if (!state.username || state.username.trim().toLowerCase() === 'analyst') {
+          return { ...state, username: generateRandomUsername() };
+        }
+
+        return state;
+      },
     }
   )
 );
