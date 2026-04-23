@@ -29,7 +29,7 @@ If you prefer manual configuration, create a Web Service with:
 
 - Root Directory: `server`
 - Runtime: `Node`
-- Build Command: `npm ci && npm run build`
+- Build Command: `npm ci --include=dev && npm run build`
 - Start Command: `npm run start`
 - Health Check Path: `/health`
 
@@ -131,7 +131,7 @@ npm run dev
 
 ### Render backend
 
-- Build Command: `npm ci && npm run build`
+- Build Command: `npm ci --include=dev && npm run build`
 - Start Command: `npm run start`
 
 ### Vercel frontend
@@ -180,7 +180,7 @@ Fix:
 - Backend pushed to GitHub
 - Render blueprint available in the repo
 - Render service root is `server`
-- Render build command is `npm ci && npm run build`
+- Render build command is `npm ci --include=dev && npm run build`
 - Render start command is `npm run start`
 - Render `CLIENT_ORIGIN` is set to the Vercel URL
 - Vercel project root is `client`
